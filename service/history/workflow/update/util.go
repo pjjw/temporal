@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/otel/trace"
+	"go.temporal.io/server/common/antithesis"
 	"go.temporal.io/server/common/log"
 	"go.temporal.io/server/common/log/tag"
 	"go.temporal.io/server/common/metrics"
@@ -82,6 +83,12 @@ func (i *instrumentation) invalidStateTransition(updateID string, msg proto.Mess
 		tag.NewStringTag("update-id", updateID),
 		tag.NewStringTag("message", fmt.Sprintf("%T", msg)),
 		tag.NewStringerTag("state", state))
+	antithesis.Unreachable("[OSS/Update] invalid state transition attempted",
+		map[string]any{
+			"update-id": updateID,
+			"message":   fmt.Sprintf("%T", msg),
+			"state":     state.String(),
+		})
 }
 
 func (i *instrumentation) updateRegistrySize(size int) {
@@ -98,4 +105,10 @@ func (i *instrumentation) stateChange(updateID string, from, to state) {
 		tag.NewStringerTag("from-state", from),
 		tag.NewStringerTag("to-state", to),
 	)
+	antithesis.Sometimes(true, "[OSS/Update] update state change",
+		map[string]any{
+			"update-id":  updateID,
+			"from-state": from.String(),
+			"to-state":   to.String(),
+		})
 }
